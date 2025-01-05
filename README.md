@@ -10,6 +10,12 @@ Eventually I may develop other clients (ClojureDart?  HumbleUI?) to interact wit
 
 This is not meant to ever be used by anyone besides me, but I'll probably publish a demo page somewhere (TBD).
 
+## Devops
+
+The datalevin DB will be created at `$HOME/dtlv`. You may change this at `devops.db/db-dir`.
+
+# Electric v3 Starter App README
+
 What follows is the original README of the Electric v3 Starter App.  I'll try and minimize changes to the app and hence to this part of the README, to make it easier to import upstream changes.
 
 ## Links
