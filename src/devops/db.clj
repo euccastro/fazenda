@@ -1,15 +1,20 @@
 (ns devops.db
   (:require [datalevin.core :as d]
             [tick.core :as t]
-            [cljc.java-time.instant :as ti]))
+            [cljc.java-time.instant :as ti]
+            [electric-starter-app.db :refer [db-dir username]]))
 
-(def db-dir
-  (str (System/getProperty "user.home") "/dtlv"))
-
-(def schema {:body {:db/valueType :db.type/string,
-                    :db/fulltext true,
-                    :db.fulltext/autoDomain true,}
-             :tags #:db{:valueType :db.type/keyword, :cardinality :db.cardinality/many, :aid 6}})
+(def schema {:body {:db/valueType :db.type/string
+                    :db/cardinality :db.cardinality/one
+                    :db/fulltext true
+                    :db.fulltext/autoDomain true}
+             :tags #:db{:valueType :db.type/keyword :cardinality :db.cardinality/many}
+             :user/name {:db/valueType :db.type/string
+                         :db/cardinality :db.cardinality/one
+                         :db/unique :db.unique/identity}
+             :user/in {:db/valueType :db.type/ref
+                       :db/cardinality :db.cardinality/one
+                       :db/isComponent true}})
 
 (def options {:validate-data? true
               :closed-schema? true
@@ -17,8 +22,20 @@
 
 (def conn (d/create-conn db-dir schema options))
 
+(defn create-user [username]
+  (d/transact! conn [{:db/id -1 :body "Edit me."}
+                     {:db/id -2 :user/name username :user/in -1}]))
+
+(create-user username)
+
 (comment
 
+  (d/q '[:find ?ib
+         :where
+         [?e :user/name "estevo"]
+         [?e :user/in ?i]
+         [?i :body ?ib]]
+       (d/db conn))
   (d/transact! conn
                [{:body "test" :tags [:test-tag :another-test-tag]}])
 
