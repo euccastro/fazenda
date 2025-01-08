@@ -9,17 +9,17 @@
 (defn conn []
   (d/get-conn db-dir))
 
-(defn in
-  ([username]
-   (d/q '[:find ?ib .
-          :in $ ?u
-          :where
-          [?e :user/name ?u]
-          [?e :user/in ?i]
-          [?i :body ?ib]]
-        (d/db (conn))
-        username))
-  ([username body]
+(defn ?in [db username]
+  (d/q '[:find ?ib .
+         :in $ ?u
+         :where
+         [?e :user/name ?u]
+         [?e :user/in ?i]
+         [?i :body ?ib]]
+       db
+       username))
+
+(defn !in [username body]
    (let [eid (d/q '[:find ?i .
                     :in $ ?u
                     :where
@@ -28,12 +28,12 @@
                   (d/db (conn))
                   username)]
      (d/transact! (conn)
-                  [[:db/add eid :body body]]))))
+                  [[:db/add eid :body body]])))
 
 (comment
-  (in "estevo")
+  (?in (d/db (conn)) "estevo")
   ;; => "Edit me."
-  (in "estevo" "So I did!")
-  (in "estevo")
-;; => "So I did!"
+  (!in "estevo" "edited")
+  (?in (d/db (conn)) "estevo")
+  ;; => "edited"
   )
