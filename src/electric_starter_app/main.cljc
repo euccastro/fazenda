@@ -1,15 +1,13 @@
 (ns electric-starter-app.main
   (:require [hyperfiddle.electric3 :as e]
             [hyperfiddle.electric-dom3 :as dom]
+            [hyperfiddle.electric-forms3 :as forms]
             [missionary.core :as m]
             #?(:clj [electric-starter-app.db :as db])
             #?(:cljs ["@tiptap/core" :refer [Editor]])
             #?(:cljs ["@tiptap/starter-kit" :default StarterKit])))
 
 (e/declare db)
-
-;; Workaround: Electric complains about being unable to find the name otherwise.
-#?(:cljs (def starter-kit StarterKit))
 
 ;; Adapted from form/Input, removing some options I'm not using
 (e/defn Textarea [v props]
@@ -23,29 +21,38 @@
          (dom/On "input" #(-> % .-target .-value) (e/snapshot (str v)))
          (set! (.-value dom/node) (str v)))))))
 
+#?(:cljs
+   (do
+     ;; Workaround: Electric complains about being unable to find the name otherwise.
+     (def starter-kit StarterKit)
+     ;; Workaround: unless they are in a fn that depends on a changing Electric
+     ;; value, Electric will remember (.-isFocused editor) and (.-commands
+     ;; editor) from mount time instead of fetching their current values.
+     (defn set-contents-if-not-focused [^Editor editor x]
+       (when-not (.-isFocused editor)
+         (.setContent (.-commands editor) x)))))
 
 (e/defn TiptapEditor [x]
   (dom/div
-   (e/client
-     (let [^Editor editor (new Editor
-                               (clj->js {:element dom/node
-                                         :extensions [starter-kit]
-                                         :content "<p>Hello Tiptap!</p>"}))]
-      (e/On-unmount #(.destroy ^Editor editor))
-      (e/Reconcile
-       (if (dom/Focused?)
-         (e/input
-           (->> (m/observe
-                 (fn [!]
-                   (let [callback (fn [ev]
-                                    (let [^Editor e (.-editor ev)
-                                          ^js j (.getJson e)]
-                                      (prn "J" j)
-                                      (! j)))]
-                     (.on ^Editor editor callback)
-                     #(.off editor callback))))
-                (m/relieve {})))
-         (.setContent (.-commands editor) x)))))))
+
+    (e/client
+      (let [x0 (e/snapshot x)
+            ^Editor editor (new Editor
+                                (clj->js {:element dom/node
+                                          :extensions [starter-kit]
+                                          :content x0}))]
+        (set-contents-if-not-focused editor x)
+        (e/On-unmount #(.destroy ^Editor editor))
+        (e/input
+          (->> (m/observe
+                (fn [!]
+                  (let [on-update (fn [ev]
+                                    (let [^Editor e (.-editor ev)]
+                                      (! (.getHTML e))))]
+                    (.on ^Editor editor "update" on-update)
+                    #(.off ^Editor editor "update" on-update))))
+               (m/reductions {} x0)
+               (m/relieve {})))))))
 
 (e/defn In []
   (dom/div
@@ -88,9 +95,8 @@
       ;; mandatory wrapper div https://github.com/hyperfiddle/electric/issues/74
       (dom/div (dom/props {:style {:display "contents"}})
                (dom/h2 (dom/text "In"))
-               (e/client
-                 (let [contents (TiptapEditor "<p>Hello from Tiptap</p>")]
-                   (dom/div
-                     (dom/b (dom/text "Contents:"))
-                     (dom/pre
-                       (dom/text (pr-str (js->clj contents)))))))))))
+               (dom/div
+                 (let [!contents (atom "<p>Hello from Tiptap</p>")
+                       contents (e/watch !contents)]
+                   (reset! !contents (TiptapEditor contents))
+                   (reset! !contents (forms/Input contents))))))))
