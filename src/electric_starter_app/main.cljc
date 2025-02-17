@@ -54,6 +54,7 @@
                (m/reductions {} x0)
                (m/relieve {})))))))
 
+;; XXX: use tiptap instead of textarea; reenable.
 (e/defn In []
   (dom/div
     (let [s0 (e/server (db/?in db db/username))
